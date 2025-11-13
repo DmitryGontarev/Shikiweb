@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+
+    <title>Пример</title>
+</head>
+
+<style>
+
+    body {
+        background-color: #000000;
+    }
+
+    a:link {
+        color: #FFFFFF;
+    }
+
+    a:visited {
+        color: #FFFFFF;
+    }
+
+    a:active {
+        color: #FFFFFF;
+    }
+
+    html::-webkit-scrollbar-track {
+        width: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        backface-visibility: hidden;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    html::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    html::-webkit-scrollbar-thumb {
+        width: 10px;
+        border-radius: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .3);
+        background-color: rgba(85, 85, 85, 0.5);
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+</style>
+
+<body onload="startScript()">
+
+<div>
+    <main id="mainContainer" class="flow"></main>
+
+    <div id="topSearch"></div>
+</div>
+
+</body>
+
+<script>
+    alert("Это пример работы скрипта для браузера");
+
+    const style100percent = '100%';
+    const style100vw = '100vw';
+    const style100vh = '100vh';
+    const flexStyle = 'flex';
+    const centerStyle = 'center';
+
+    const AmoledColorOnPrimary = `#FFFFFF`;
+    const AmoledColorSurface = `#000000`;
+    const DefaultColorOnBackground = `#7B8084`;
+    const DefaultColorSecondary = `#FF7043`;
+    const AnonsColor = `#FD855F`
+    const OngoingColor = `#0088FF`
+    const ReleasedColor = `#00A700`
+
+    let rowSearchWidth = '700px';
+
+    const loaderId = 'loader';
+    const searchGridId = 'searchGrid';
+    const noFoundId = 'noFound';
+    const searchInputId = 'searchInput';
+
+    /** настройка контейнера для поля ввода */
+    const topSearch = document.getElementById("topSearch");
+    topSearch.style.display = flexStyle;
+    topSearch.style.width = style100percent;
+    topSearch.style.position = "fixed";
+    topSearch.style.justifyContent = centerStyle;
+    topSearch.style.alignItems = centerStyle;
+    topSearch.style.transition = 'transform 500ms';
+
+    let searchData = [];
+
+    let page = 1;
+    let limit = 50;
+    let order = 'ranked';
+    let censored = true;
+    let searchInput = '';
+
+    let bottomReached = false;
+
+    let oldScrollY = 0;
+    let isScrollDown = false;
+
+    let isLoad = false;
+
+    window.addEventListener('resize', () => {
+        const inputElement = document.getElementById(searchInputId);
+        if (window.innerWidth < 800) {
+            inputElement.style.width = `${window.innerWidth * 0.5}px`;
+        } else {
+            inputElement.style.width = rowSearchWidth;
+        }
+    });
+
+    window.addEventListener("scroll", () => {
+        if (window.scrollY > oldScrollY) {
+            isScrollDown = true;
+            topSearch.style.transform = `translateY(-100px)`;
+
+        } else {
+            isScrollDown = false;
+            topSearch.style.transform = `translateY(0px)`;
+        }
+        oldScrollY = window.scrollY;
+
+        handleScroll();
+    });
+
+    function handleScroll() {
+        const windowHeight = "innerHeight" in window ? window.innerHeight : document.documentElement.offsetHeight;
+        const body = document.body;
+        const html = document.documentElement;
+        const docHeight = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight) - 1;
+        const windowBottom = Math.round(windowHeight + window.scrollY);
+        if (Math.round(windowBottom) >= docHeight) {
+            if (!isLoad) {
+                console.log(`BOTTOM REACHED = ${bottomReached}`)
+                if (bottomReached === false) {
+                    page += 1;
+                    getSearch();
+                }
+            }
+        } else {
+
+        }
+    }
+
+    /** Настройка основного контейнера экрана */
+    const mainContainer = document.getElementById("mainContainer");
+    mainContainer.style.width = style100percent;
+    mainContainer.style.height = style100percent;
+    mainContainer.style.position = "absolute";
+    mainContainer.style.top = "100px";
+
+    /** Первоначальный старт загрузки страницы */
+    function startScript() {
+        topSearch.appendChild(getInput())
+        getSearch();
+    }
+
+    /** Загрузка списка поиска */
+    function getSearch() {
+        const params = new URLSearchParams();
+        params.append('page', page);
+        params.append('limit', limit);
+        params.append('order', order);
+        params.append('censored', censored);
+        params.append('search', searchInput);
+
+        const response = fetch('https://shikimori.one/api/animes?' + params, {
+            method: 'GET'
+        });
+
+        const searchGrid = document.getElementById(searchGridId);
+        if (searchGrid) {
+            searchGrid.appendChild(getSearchLoader());
+        } else {
+            mainContainer.appendChild(getSearchLoader());
+        }
+
+        isLoad = true;
+
+        response
+            .then(function (r) {
+                    return r.json();
+                }
+            )
+            .then(function (newList) {
+                console.log(`NEW LIST = ${newList.length === 0 || newList === null || newList === undefined}`);
+                if ((newList.length === 0 || newList === null || newList === undefined) && page === 1) {
+                    searchData = [];
+                    bottomReached = true;
+                }
+
+                if ((newList.length === 0 || newList === null || newList === undefined)  && page > 1) {
+                    bottomReached = true;
+                }
+
+                addSearchList(newList);
+            })
+            .catch(function (reason) {
+                if (page > 1) {
+                    page -= 1;
+                }
+                deleteSearchLoader();
+            })
+            .finally(function () {
+                deleteSearchLoader()
+                isLoad = false;
+            });
+
+        if (!bottomReached) {
+            deleteAllLoadCard();
+        }
+    }
+
+    /** Добавление списка на экран */
+    function addSearchList(list) {
+
+        let newList = searchData;
+
+        if (list !== null && list.length > 0) {
+            for (let item of list) {
+                const flag = newList.find((e) => e.id === item.id);
+
+                if (flag === null || flag === undefined) {
+                    newList.push(item);
+                }
+            }
+        }
+
+        searchData = newList;
+
+        if (document.getElementById(searchGridId)) {
+            document.getElementById(searchGridId).remove();
+        }
+
+        const searchGrid = document.createElement('div');
+        searchGrid.id = searchGridId;
+        searchGrid.style.display = 'grid';
+        searchGrid.style.gridTemplateColumns = '250px repeat(auto-fill, 250px)';
+        searchGrid.style.gridAutoRows = '340px';
+        searchGrid.style.height = '100%';
+        searchGrid.style.width = '100%';
+        searchGrid.style.marginBottom = '100px';
+
+        for (let item of searchData) {
+            searchGrid.appendChild(getSearchCard(item));
+        }
+
+        mainContainer.appendChild(searchGrid);
+
+        if (bottomReached) {
+            searchGrid.appendChild(getAllLoadCard());
+        }
+    }
+
+    function deleteSearchList() {
+        const grid = document.getElementById(searchGridId);
+        if (grid) {
+            grid.remove();
+        }
+    }
+
+    /** Показать поле ввода */
+    function getInput() {
+        const searchFieldDiv = document.createElement('div')
+        searchFieldDiv.style.display = flexStyle;
+        searchFieldDiv.style.height = '100px';
+        searchFieldDiv.style.width = 'auto';
+        searchFieldDiv.style.alignItems = centerStyle;
+        searchFieldDiv.style.justifyContent = centerStyle;
+
+        const inputDiv = document.createElement("div");
+        inputDiv.style.width = style100percent;
+        inputDiv.style.display = flexStyle;
+        inputDiv.style.verticalAlign = 'middle';
+        inputDiv.style.alignItems = centerStyle;
+        inputDiv.style.justifyContent = 'end';
+
+        const input = document.createElement("input");
+        input.id = searchInputId;
+        input.addEventListener("input", handleInput);
+        input.addEventListener("change", handleInputByEnter);
+        input.style.width = rowSearchWidth;
+        input.style.height = '20px';
+        input.style.background = hexToRgbWithAlpha(AmoledColorSurface, 0.7);
+        input.style.color = AmoledColorOnPrimary;
+        input.style.borderColor = DefaultColorOnBackground;
+        input.style.borderRadius = `7px`;
+        input.style.padding = '14px';
+        input.placeholder = "Поиск по названию";
+
+        const refreshBtnDiv = document.createElement("div");
+        refreshBtnDiv.style.display = 'flow'
+        refreshBtnDiv.style.background = hexToRgbWithAlpha(AmoledColorSurface, 0.7);
+        refreshBtnDiv.style.border = `1px solid`;
+        refreshBtnDiv.style.borderColor = hexToRgbWithAlpha(DefaultColorOnBackground, 0.7);
+        refreshBtnDiv.style.borderRadius = '7px';
+        refreshBtnDiv.style.marginLeft = "7px";
+
+        refreshBtnDiv.addEventListener("click", (event) => {
+            reloadData();
+        });
+
+        refreshBtnDiv.addEventListener('mouseover', () => {
+            refreshBtnDiv.style.borderColor = AmoledColorOnPrimary;
+        });
+
+        refreshBtnDiv.addEventListener('mouseleave', () => {
+            refreshBtnDiv.style.borderColor = hexToRgbWithAlpha(DefaultColorOnBackground, 0.7);
+        });
+
+        const refreshText = getText("Обновить");
+        refreshText.style.padding = '7px';
+
+        refreshBtnDiv.appendChild(refreshText);
+
+        searchFieldDiv.appendChild(inputDiv);
+
+        inputDiv.appendChild(input);
+
+        searchFieldDiv.appendChild(refreshBtnDiv);
+
+        return searchFieldDiv;
+    }
+
+    /** Функция обработки ввода в поле ввода
+     *
+     * @param value строка ввода
+     */
+    function handleInput(value) {
+        const userInput = value.target.value;
+        if (userInput.length === 0) {
+            reloadData();
+        }
+    }
+
+    /** Функция обработки ввода в поле ввода
+     *
+     * @param value строка ввода
+     */
+    function handleInputByEnter(value) {
+        const userInput = value.target.value;
+        page = 1;
+        bottomReached = false;
+        searchInput = userInput;
+        searchData = [];
+        window.scrollTo(0, 0);
+        getSearch();
+    }
+
+    /** Загрузить данные заново */
+    function reloadData() {
+        const input = document.getElementById(searchInputId);
+        if (input) {
+            input.value = '';
+        }
+        deleteSearchList();
+        page = 1;
+        bottomReached = false;
+        searchData = [];
+        searchInput = '';
+        window.scrollTo(0, 0);
+        getSearch();
+    }
+
+    /**
+     * Функция для получения карточки списка поиска
+     *
+     * @param searchModel данные карточки
+     */
+    function getSearchCard(searchModel) {
+        const imageLink = document.createElement('a');
+        imageLink.style.position = 'relative';
+        imageLink.href = `https://shikimori.one${searchModel.url}`;
+
+        const divCard = document.createElement('div');
+        divCard.style.display = 'flow';
+        divCard.style.width = '235px';
+        divCard.style.height = 'auto';
+        divCard.style.borderRadius = '7px';
+        divCard.style.marginLeft = '7px';
+        divCard.style.marginRight = '7px';
+        divCard.style.marginTop = '20px';
+        divCard.style.marginBottom = '22px';
+
+        divCard.addEventListener('mouseover', () => {
+            divCard.style.scale = '1.02';
+        });
+
+        divCard.addEventListener('mouseleave', () => {
+            divCard.style.scale = '1';
+        });
+
+        /** Контейнер информации/картинки */
+        const imageDiv = document.createElement('div');
+        imageDiv.style.height = '328px';
+        imageDiv.style.width = '235px';
+        imageDiv.style.position = 'relative';
+
+        imageLink.appendChild(imageDiv);
+
+        /** Контейнер информации под картинкой */
+        const infoDiv = document.createElement('div');
+        infoDiv.style.display = 'flow';
+        infoDiv.style.height = style100percent;
+        infoDiv.style.width = style100percent;
+        infoDiv.style.position = 'absolute';
+        infoDiv.style.left = 0;
+        infoDiv.style.right = 0;
+        infoDiv.style.top = 0;
+        infoDiv.style.bottom = 0;
+        infoDiv.style.margin = 'auto';
+        infoDiv.style.objectPosition = centerStyle;
+        infoDiv.style.justifyContent = centerStyle;
+        infoDiv.style.objectFit = 'cover';
+        infoDiv.style.borderRadius = '7px';
+
+        /** Контейнер c информацией внутри infoDiv */
+        const infoContainer = document.createElement('div');
+        infoContainer.style.display = 'flow';
+        infoContainer.style.height = 'auto';
+        infoContainer.style.width = style100percent;
+        infoContainer.style.justifyContent = centerStyle;
+        infoContainer.style.alignItems = centerStyle;
+        infoContainer.style.marginTop = '30%';
+
+        /** Контейнер статус выхода - оценка */
+        const statusScore = document.createElement('div');
+        statusScore.style.display = flexStyle;
+        statusScore.style.width = style100percent;
+        statusScore.style.height = 'auto';
+        statusScore.style.alignItems = centerStyle;
+        statusScore.style.justifyContent = centerStyle;
+
+        /** Статус */
+        const status = getText();
+        status.innerHTML = getStatusString(searchModel.status);
+        status.style.color = getStatusColor(searchModel.status);
+
+        statusScore.appendChild(status);
+
+        /** Оценка */
+        const score = getText();
+        score.innerHTML = searchModel.score;
+
+        statusScore.appendChild(score);
+
+        infoContainer.appendChild(statusScore);
+
+        infoDiv.appendChild(infoContainer);
+
+        imageDiv.appendChild(infoDiv)
+
+        /** Картинка карточки */
+        const image = document.createElement('img');
+        image.style.height = style100percent;
+        image.style.width = style100percent;
+        image.style.position = 'absolute';
+        image.style.top = 0;
+        image.style.objectFit = 'cover';
+        image.style.borderRadius = '7px';
+        image.src = `https://shikimori.one${searchModel.image.original}`;
+
+        imageDiv.appendChild(image);
+
+        /** Контейнер Текста поверх картинки */
+        const overPictureDiv = document.createElement('div');
+        overPictureDiv.style.position = 'absolute';
+        overPictureDiv.style.top = 0;
+        overPictureDiv.style.height = '100%';
+        overPictureDiv.style.width = '100%';
+        overPictureDiv.style.objectFit = 'cover';
+        overPictureDiv.style.borderRadius = '7px';
+
+        /** Текст в левом верхнем углу */
+        const leftTopCorner = document.createElement('div');
+        leftTopCorner.style.height = '30px';
+        leftTopCorner.style.width = 'auto';
+        leftTopCorner.style.position = 'absolute';
+        leftTopCorner.style.top = 0;
+        leftTopCorner.style.objectFit = 'cover';
+        leftTopCorner.style.borderTopLeftRadius = '7px';
+        leftTopCorner.style.borderBottomRightRadius = '7px';
+        leftTopCorner.style.background = `rgba(0, 0, 0, 0.7)`;
+        leftTopCorner.style.justifyContent = centerStyle;
+        leftTopCorner.style.alignItems = centerStyle;
+
+        const leftTopText = getText();
+        leftTopText.innerHTML = `${searchModel.kind}`;
+
+        leftTopCorner.appendChild(leftTopText);
+        overPictureDiv.appendChild(leftTopCorner);
+
+        /** Текст с названием внизу посередине */
+        const centerBottom = document.createElement('div');
+        centerBottom.style.height = 'auto';
+        centerBottom.style.width = '100%';
+        centerBottom.style.position = 'absolute';
+        centerBottom.style.bottom = 0;
+        centerBottom.style.objectFit = 'cover';
+        centerBottom.style.borderBottomLeftRadius = '7px';
+        centerBottom.style.borderBottomRightRadius = '7px';
+        centerBottom.style.background = `rgba(0, 0, 0, 0.7)`;
+        centerBottom.style.justifyContent = centerStyle;
+        centerBottom.style.alignItems = centerStyle;
+
+        const centerBottomText = getText();
+        centerBottomText.innerHTML = `${searchModel.russian}`;
+
+        centerBottom.addEventListener('mouseover', () => {
+            image.style.transition = 'all .5s';
+            image.style.opacity = "0";
+        })
+
+        centerBottom.addEventListener('mouseleave', () => {
+            image.style.opacity = "1";
+        })
+
+        centerBottom.appendChild(centerBottomText);
+        overPictureDiv.appendChild(centerBottom);
+
+        imageDiv.appendChild(overPictureDiv);
+
+        divCard.appendChild(imageLink);
+
+        return divCard;
+    }
+
+    function getSearchLoader() {
+        /** Контейнер карточки показа загрузки */
+        const searchLoaderDiv = document.createElement('div');
+        searchLoaderDiv.id = 'searchLoader';
+        searchLoaderDiv.style.height = '328px';
+        searchLoaderDiv.style.width = '235px';
+        searchLoaderDiv.style.alignItems = centerStyle;
+        searchLoaderDiv.style.justifyContent = centerStyle;
+        searchLoaderDiv.style.borderRadius = '7px';
+        searchLoaderDiv.style.border = `1px solid ${DefaultColorOnBackground}`
+
+        searchLoaderDiv.style.marginLeft = '7px';
+        searchLoaderDiv.style.marginRight = '7px';
+        searchLoaderDiv.style.marginTop = '20px';
+        searchLoaderDiv.style.marginBottom = '22px';
+
+        const loaderDiv = document.createElement('div');
+        loaderDiv.style.display = 'flow';
+        loaderDiv.style.height = style100percent;
+        loaderDiv.style.width = style100percent;
+        loaderDiv.style.objectPosition = centerStyle;
+        loaderDiv.style.justifyContent = centerStyle;
+        loaderDiv.style.objectFit = 'cover';
+
+        /** Контейнер c информацией внутри loaderDiv */
+        const loaderContainer = document.createElement('div');
+        loaderContainer.style.display = 'flex';
+        loaderContainer.style.height = 'auto';
+        loaderContainer.style.width = 'auto';
+        loaderContainer.style.justifyContent = centerStyle;
+        loaderContainer.style.alignItems = centerStyle;
+        loaderContainer.style.marginTop = '50%';
+
+        const loader = document.createElement('div');
+        loader.style.border = `4px solid ${DefaultColorSecondary}`;
+        loader.style.borderTop = '4px solid transparent';
+        loader.style.borderRadius = '50%';
+        loader.style.width = '40px';
+        loader.style.height = '40px';
+        loader.style.animation = 'spin 2s linear infinite';
+
+        loaderContainer.appendChild(loader);
+        loaderDiv.appendChild(loaderContainer);
+        searchLoaderDiv.appendChild(loaderDiv);
+
+        return searchLoaderDiv;
+    }
+
+    function deleteSearchLoader() {
+        const searchLoader = document.getElementById('searchLoader');
+        if (searchLoader) {
+            searchLoader.remove();
+        }
+    }
+
+    function getAllLoadCard() {
+        /** Контейнер карточки показа загрузки */
+        const allLoadDiv = document.createElement('div');
+        allLoadDiv.id = 'allLoadCard';
+        allLoadDiv.style.height = '328px';
+        allLoadDiv.style.width = '235px';
+        allLoadDiv.style.alignItems = centerStyle;
+        allLoadDiv.style.justifyContent = centerStyle;
+        allLoadDiv.style.borderRadius = '7px';
+        allLoadDiv.style.border = `1px solid ${DefaultColorOnBackground}`
+
+        allLoadDiv.style.marginLeft = '7px';
+        allLoadDiv.style.marginRight = '7px';
+        allLoadDiv.style.marginTop = '20px';
+        allLoadDiv.style.marginBottom = '22px';
+
+        const textDiv = document.createElement('div');
+        textDiv.style.display = 'flow';
+        textDiv.style.height = style100percent;
+        textDiv.style.width = style100percent;
+        textDiv.style.objectPosition = centerStyle;
+        textDiv.style.justifyContent = centerStyle;
+        textDiv.style.objectFit = 'cover';
+
+        /** Контейнер c информацией внутри textDiv */
+        const textContainer = document.createElement('div');
+        textContainer.style.display = 'flex';
+        textContainer.style.height = 'auto';
+        textContainer.style.width = 'auto';
+        textContainer.style.justifyContent = centerStyle;
+        textContainer.style.alignItems = centerStyle;
+        textContainer.style.marginTop = '50%';
+
+        const text = getText('Все данные загружены');
+
+        textContainer.appendChild(text);
+        textDiv.appendChild(textContainer);
+        allLoadDiv.appendChild(textDiv);
+
+        return allLoadDiv;
+    }
+
+    function deleteAllLoadCard() {
+        const allLoadCard = document.getElementById('allLoadCard');
+        if (allLoadCard) {
+            allLoadCard.remove();
+        }
+    }
+
+    /** Основной текст */
+    function getText(value, color, size) {
+        const text = document.createElement('small');
+        text.style.display = '-webkit-box';
+        text.style.padding = '7px';
+        text.style.color = color ?? AmoledColorOnPrimary;
+        text.style.textAlign = centerStyle;
+        text.style.fontSize = size;
+        text.style.fontFamily = 'verdana';
+        text.style.textOverflow = 'ellipsis';
+        text.style.webkitBoxOrient = 'vertical';
+        text.style.webkitLineClamp = 7;
+        text.style.overflow = 'hidden';
+        text.innerHTML = value;
+
+        return text;
+    }
+
+    function getStatusString(status) {
+        switch (status) {
+            case ("anons"):
+                return "Анонс";
+            case ("ongoing"):
+                return "Онгоинг";
+            case ("released"):
+                return "Релиз";
+            default:
+                return "";
+        }
+    }
+
+    function getStatusColor(status) {
+        switch (status) {
+            case ("anons"):
+                return AnonsColor;
+            case ("ongoing"):
+                return OngoingColor;
+            case ("released"):
+                return ReleasedColor;
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * Функция для преобразования цвет из HEX в RGBA
+     */
+    function hexToRgbWithAlpha(hex, alpha) {
+
+        const isValidHex = (hexValue) => /^#([A-Fa-f0-9]{3,4}){1,2}$/.test(hexValue)
+
+        if (!isValidHex(hex)) {
+            return "transparent"
+        }
+
+        hex = hex.replace('#', '');
+
+        let r;
+        let g;
+        let b;
+
+        if (hex.length === 8) {
+            r = parseInt(hex.slice(0, 2), 16);
+            g = parseInt(hex.slice(2, 4), 16);
+            b = parseInt(hex.slice(4, 6), 16);
+        } else {
+            r = parseInt(hex.length === 3 ? hex.slice(0, 1).repeat(2) : hex.slice(0, 2), 16);
+            g = parseInt(hex.length === 3 ? hex.slice(1, 2).repeat(2) : hex.slice(2, 4), 16);
+            b = parseInt(hex.length === 3 ? hex.slice(2, 3).repeat(2) : hex.slice(4, 6), 16);
+        }
+
+        if (alpha != null && (alpha >= 0 && alpha <= 1)) {
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+</script>
+
+</html>

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+
+    <title>Пример</title>
+</head>
+
+<style>
+
+    body {
+        background-color: #000000;
+    }
+
+    a:link {
+        color: #FFFFFF;
+    }
+
+    a:visited {
+        color: #FFFFFF;
+    }
+
+    a:active {
+        color: #FFFFFF;
+    }
+
+    html::-webkit-scrollbar-track {
+        width: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        backface-visibility: hidden;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    html::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    html::-webkit-scrollbar-thumb {
+        width: 10px;
+        border-radius: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .3);
+        background-color: rgba(85, 85, 85, 0.5);
+    }
+
+    .rowAnime::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    .rowAnime::-webkit-scrollbar-track {
+        width: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        backface-visibility: hidden;
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    .rowAnime::-webkit-scrollbar-thumb {
+        width: 10px;
+        border-radius: 10px;
+        -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .3);
+        background-color: rgba(85, 85, 85, 0.5);
+    }
+
+    .rowAnime::-webkit-scrollbar:vertical {
+        display: none;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+</style>
+
+<body onload="startScript();">
+
+<div>
+    <main id="mainContainer" class="flow"></main>
+
+    <div id="topSearch"></div>
+</div>
+
+</body>
+
+<script>
+    alert("Это пример работы скрипта для браузера");
+
+    const style100percent = '100%';
+    const style100vw = '100vw';
+    const style100vh = '100vh';
+    const flexStyle = 'flex';
+    const centerStyle = 'center';
+
+    const AmoledColorOnPrimary = `#FFFFFF`;
+    const AmoledColorSurface = `#000000`;
+    const DefaultColorOnBackground = `#7B8084`;
+    const DefaultColorSecondary = `#FF7043`;
+    const AnonsColor = `#FD855F`
+    const OngoingColor = `#0088FF`
+
+    let rowSearchWidth = '700px';
+
+    let calendarData = [];
+
+    const loaderId = 'loader';
+    const cardListId = 'cardList';
+    const timerHeaderId = 'timerHeader';
+    const noFoundId = 'noFound';
+    const searchInputId = 'searchInput';
+
+    /** настройка контейнера для поля ввода */
+    const topSearch = document.getElementById("topSearch");
+    topSearch.style.display = flexStyle;
+    topSearch.style.width = style100percent;
+    topSearch.style.position = "fixed";
+    topSearch.style.justifyContent = centerStyle;
+    topSearch.style.alignItems = centerStyle;
+    topSearch.style.transition = 'transform 500ms';
+
+    let oldScrollY = 0;
+    let isScrollDown = false;
+
+    window.addEventListener('resize', () => {
+        const inputElement = document.getElementById(searchInputId);
+        if (window.innerWidth < 800) {
+            inputElement.style.width = `${window.innerWidth * 0.5}px`;
+        } else {
+            inputElement.style.width = rowSearchWidth;
+        }
+    });
+
+    window.addEventListener("scroll", () => {
+        if (window.scrollY > oldScrollY) {
+            isScrollDown = true;
+            topSearch.style.transform = `translateY(-100px)`;
+
+        } else {
+            isScrollDown = false;
+            topSearch.style.transform = `translateY(0px)`;
+        }
+        oldScrollY = window.scrollY;
+    });
+
+    /** Настройка основного контейнера экрана */
+    const mainContainer = document.getElementById("mainContainer");
+    mainContainer.style.width = style100percent;
+    mainContainer.style.height = style100percent;
+    mainContainer.style.position = "absolute";
+    mainContainer.style.top = "100px";
+
+    /** Первоначальный старт загрузки страницы */
+    function startScript() {
+        topSearch.appendChild(getInput())
+        getCalendar();
+        mainContainer.appendChild(getTimerHeader());
+        updateTime();
+    }
+
+    /** функция обновления и показа текущего времени */
+    function updateTime() {
+        const date = new Date();
+
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const dayOfMonth = date.getDate();
+
+        const dayOfWeek = date.getDay();
+
+        const hours = date.getHours() < 10 ? `0${date.getHours()}` : date.getHours();
+        const minutes = date.getMinutes() < 10 ? `0${date.getMinutes()}` : date.getMinutes();
+        const seconds = date.getSeconds() < 10 ? `0${date.getSeconds()}` : date.getSeconds();
+        const dateString = `${getDateString(dayOfWeek)} |  ${dayOfMonth} ${getMonthString(month, false)} ${year} | ${hours}:${minutes}:${seconds}`
+
+        const timer = document.getElementById(timerHeaderId);
+
+        if (timer != null) {
+            document.getElementById(timerHeaderId).innerHTML = `${dateString}`;
+        }
+        setTimeout(updateTime, 1000);
+    }
+
+    /** функция полученя данных графика выхода серий */
+    function getCalendar() {
+        const response = fetch('https://shikimori.one/api/calendar',  {
+            method: 'GET'
+        });
+        mainContainer.appendChild(getLoader());
+        response
+            .then(function (r) {
+                return r.json()
+            })
+            .then(function (calendarList) {
+                calendarData = calendarList;
+                calendarToMap(calendarList);
+            })
+            .catch(function (reason) {
+                console.log(`ERROR = ${reason}`);
+            })
+            .finally(function () {
+                deleteLoader();
+            })
+    }
+
+    /**
+     * Функция для распределения полученных данных по спискам
+     *
+     * @param calendarList список с датами выхода серий
+     */
+    function calendarToMap(calendarList) {
+        // текущее время для расчёта сортировки списка по дате
+        const currentTime = Date.now();
+
+        let releasedToday = [];
+        let animeMap = new Map();
+
+        for (let calendarModel of calendarList) {
+            const nextEpisodeDate = Date.parse(calendarModel.next_episode_at);
+
+            if (currentTime >= nextEpisodeDate) {
+                releasedToday.push(calendarModel);
+            } else {
+                const key = new Date(new Date(nextEpisodeDate)).setHours(0, 0, 0, 0);
+
+                if (animeMap.get(key) === undefined) {
+                    animeMap.set(key, [calendarModel]);
+                } else {
+                    animeMap.get(key).push(calendarModel);
+                }
+            }
+        }
+
+        const cardList = document.createElement('div');
+        cardList.style.display = 'flow';
+        cardList.id = cardListId;
+
+        deleteNoFound();
+
+        deleteCardList();
+
+        if (releasedToday.length > 0) {
+            const rowDayAnime = getRowDayAnime(
+                "Вышедшее",
+                releasedToday
+            )
+
+            cardList.appendChild(rowDayAnime);
+        }
+
+        for (let key of Array.from(animeMap.keys())) {
+            const date = new Date(key);
+            const dayName = getDateString(date.getDay());
+            const dayNumber = date.getDate();
+            const monthString = getMonthString(date.getMonth(), false);
+
+            const rowDayAnime = getRowDayAnime(
+                `${dayName}, ${dayNumber} ${monthString}`,
+                animeMap.get(key)
+            )
+
+            cardList.appendChild(rowDayAnime);
+        }
+
+        mainContainer.appendChild(cardList);
+    }
+
+    /**
+     * Функция для получения заголовка - списка выходящих эпизодов
+     *
+     * @param titleString строка с датой выхода над списком
+     * @param calendarList список аниме
+     * @returns {HTMLDivElement}
+     */
+    function getRowDayAnime(titleString, calendarList) {
+        const rowColumn = document.createElement('div');
+
+        const title = getSemiBoldText(titleString, null, '20px')
+        title.style.padding = '20px';
+
+        rowColumn.appendChild(title);
+
+        const rowAnime = document.createElement('div');
+        rowAnime.style.display = flexStyle;
+        rowAnime.style.flexDirection = 'row';
+        rowAnime.style.width = style100percent;
+        rowAnime.style.height = 'auto';
+        rowAnime.style.overflow = 'clip';
+        rowAnime.style.overflowX = 'auto';
+        rowAnime.style.justifyContent = 'start';
+        rowAnime.style.alignItems = 'start';
+        rowAnime.style.whiteSpace = 'nowrap';
+
+        rowAnime.className = 'rowAnime';
+
+        for (let anime of calendarList) {
+            rowAnime.appendChild(getCalendarCard(anime));
+        }
+
+        rowColumn.appendChild(rowAnime);
+
+        rowColumn.appendChild(getDivider());
+
+        return rowColumn;
+    }
+
+    /** Загрузить данные заново */
+    function reloadData() {
+        const input = document.getElementById(searchInputId);
+        if (input) {
+            input.value = '';
+        }
+
+        deleteTimerHeader();
+
+        deleteNoFound();
+        deleteCardList();
+        deleteTimerHeader();
+
+        getCalendar();
+        updateTime();
+        mainContainer.appendChild(getTimerHeader());
+        window.scrollTo(0, 0);
+    }
+
+    /** Возвращает стандартную крутилку оранжевого цвета */
+    function getLoader() {
+        const loaderDiv = document.createElement('div');
+        loaderDiv.id = loaderId;
+        loaderDiv.style.display = flexStyle;
+        loaderDiv.style.width = style100vw;
+        loaderDiv.style.height = style100vh;
+        loaderDiv.style.justifyContent = centerStyle;
+        loaderDiv.style.alignItems = centerStyle;
+
+        const loader = document.createElement('div');
+        loader.style.border = `4px solid ${DefaultColorSecondary}`;
+        loader.style.borderTop = '4px solid transparent';
+        loader.style.borderRadius = '50%';
+        loader.style.width = '40px';
+        loader.style.height = '40px';
+        loader.style.animation = 'spin 2s linear infinite';
+
+        loaderDiv.appendChild(loader);
+
+        return loaderDiv
+    }
+
+    /** Показать 'Не найдено' */
+    function getNoFound() {
+        const noFoundDiv = document.createElement('div');
+        noFoundDiv.id = noFoundId;
+        noFoundDiv.style.display = flexStyle;
+        noFoundDiv.style.width = style100vw;
+        noFoundDiv.style.height = style100vh;
+        noFoundDiv.style.justifyContent = centerStyle;
+        noFoundDiv.style.alignItems = centerStyle;
+
+        const noFoundText = getSemiBoldText('Ничего не найдено', null, '17px');
+
+        noFoundDiv.appendChild(noFoundText);
+
+        return noFoundDiv;
+    }
+
+    /** Показать заголовок с текущим временм */
+    function getTimerHeader() {
+        const timer = getSemiBoldText(null, null, '17px');
+        timer.id = timerHeaderId;
+        timer.style.color = AmoledColorOnPrimary;
+        timer.style.textAlign = 'start';
+        timer.style.paddingLeft = '7px';
+        return timer;
+    }
+
+    /** Показать поле ввода */
+    function getInput() {
+        const searchFieldDiv = document.createElement('div')
+        searchFieldDiv.style.display = flexStyle;
+        searchFieldDiv.style.height = '100px';
+        searchFieldDiv.style.width = 'auto';
+        searchFieldDiv.style.alignItems = centerStyle;
+        searchFieldDiv.style.justifyContent = centerStyle;
+
+        const inputDiv = document.createElement("div");
+        inputDiv.style.width = style100percent;
+        inputDiv.style.display = flexStyle;
+        inputDiv.style.verticalAlign = 'middle';
+        inputDiv.style.alignItems = centerStyle;
+        inputDiv.style.justifyContent = 'end';
+
+        const input = document.createElement("input");
+        input.id = searchInputId;
+        input.addEventListener("input", handleInput);
+        input.style.width = rowSearchWidth;
+        input.style.height = '20px';
+        input.style.background = hexToRgbWithAlpha(AmoledColorSurface, 0.7);
+        input.style.color = AmoledColorOnPrimary;
+        input.style.borderColor = DefaultColorOnBackground;
+        input.style.borderRadius = `7px`;
+        input.style.padding = '14px';
+        input.placeholder = "Введите название";
+
+        const refreshBtnDiv = document.createElement("div");
+        refreshBtnDiv.style.display = 'flow'
+        refreshBtnDiv.style.background = hexToRgbWithAlpha(AmoledColorSurface, 0.7);
+        refreshBtnDiv.style.border = `1px solid`;
+        refreshBtnDiv.style.borderColor = hexToRgbWithAlpha(DefaultColorOnBackground, 0.7);
+        refreshBtnDiv.style.borderRadius = '7px';
+        refreshBtnDiv.style.marginLeft = "7px";
+
+        refreshBtnDiv.addEventListener("click", (event) => {
+            reloadData();
+        });
+
+        refreshBtnDiv.addEventListener('mouseover', () => {
+            refreshBtnDiv.style.borderColor = AmoledColorOnPrimary;
+        });
+
+        refreshBtnDiv.addEventListener('mouseleave', () => {
+            refreshBtnDiv.style.borderColor = hexToRgbWithAlpha(DefaultColorOnBackground, 0.7);
+        });
+
+        const refreshText = getText("Обновить");
+        refreshText.style.padding = '7px';
+
+        refreshBtnDiv.appendChild(refreshText);
+
+        searchFieldDiv.appendChild(inputDiv);
+
+        inputDiv.appendChild(input);
+
+        searchFieldDiv.appendChild(refreshBtnDiv);
+
+        return searchFieldDiv;
+    }
+
+    /** Функция обработки ввода в поле поиска
+     *
+     * @param value строка ввода
+     */
+    function handleInput(value) {
+        const userInput = value.target.value;
+        if (userInput.length > 0) {
+            let calendarSearchList = [];
+            for (let item of calendarData) {
+                const containsRusName = item.anime.russian.toLowerCase().includes(userInput.toLowerCase()) === true;
+                const containsEngName = item.anime.name.toLowerCase().includes(userInput.toLowerCase()) === true;
+
+                if (containsRusName || containsEngName) {
+                    calendarSearchList.push(item);
+                }
+            }
+            if (calendarSearchList.length > 0) {
+                deleteNoFound();
+                calendarToMap(calendarSearchList);
+            } else {
+                deleteCardList();
+                deleteNoFound();
+                mainContainer.appendChild(getNoFound());
+            }
+        } else {
+            deleteNoFound();
+            calendarToMap(calendarData);
+        }
+        window.scrollTo(0, 0);
+    }
+
+    function deleteCardList() {
+        const cardList = document.getElementById(cardListId);
+        if (cardList != null) {
+            cardList.remove();
+        }
+    }
+
+    function deleteNoFound() {
+        const noFound = document.getElementById(noFoundId);
+        if (noFound != null) {
+            noFound.remove();
+        }
+    }
+
+    function deleteTimerHeader() {
+        const timerHeader = document.getElementById(timerHeaderId);
+        if (timerHeader) {
+            timerHeader.remove();
+        }
+    }
+
+    function deleteLoader() {
+        const loader = document.getElementById(loaderId);
+        if (loader) {
+            loader.remove();
+        }
+    }
+
+    /**
+     * Конвертация номера дня в строку с названием
+     *
+     * @param day номер дня недели
+     */
+    function getDateString(day) {
+        switch (day) {
+            case 1 :
+                return "Понедельник";
+            case 2 :
+                return "Вторник";
+            case 3 :
+                return "Среда";
+            case 4 :
+                return "Четверг";
+            case 5 :
+                return "Пятница";
+            case 6 :
+                return "Суббота";
+            case 0 :
+                return "Воскресенье";
+        }
+    }
+
+    /**
+     * Конвертация номера месяца в строку с названием
+     *
+     * @param month номер месяца
+     * @param infinitive флаг использования названия месяца в инфинитиве
+     */
+    function getMonthString(month, infinitive = true) {
+        switch (month) {
+            case 0 :
+                return infinitive ? "январь" : "января";
+            case 1 :
+                return infinitive ? "февраль" : "февраля";
+            case 2 :
+                return infinitive ? "марта" : "марта";
+            case 3 :
+                return infinitive ? "апрель" : "апреля";
+            case 4 :
+                return infinitive ? "май" : "мая";
+            case 5 :
+                return infinitive ? "июнь" : "июня";
+            case 6 :
+                return infinitive ? "июль" : "июля";
+            case 7 :
+                return infinitive ? "август" : "августа";
+            case 8 :
+                return infinitive ? "сентябрь" : "сентября";
+            case 9 :
+                return infinitive ? "октябрь" : "октября";
+            case 10 :
+                return infinitive ? "ноябрь" : "ноября";
+            case 11 :
+                return infinitive ? "декабрь" : "декабря";
+            default:
+                return " ";
+        }
+    }
+
+    /** Возвращает горизонтальный разделитель списка */
+    function getDivider() {
+        const divider = document.createElement('hr');
+        divider.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        return divider;
+    }
+
+    /**
+     * Функция для получения карточки списка календаря
+     *
+     * @param calendarModel данные карточки
+     */
+    function getCalendarCard(calendarModel) {
+
+        const currentTime = Date.now();
+
+        const nextEpisodeDate = Date.parse(calendarModel.next_episode_at);
+
+        const isAfter = currentTime >= nextEpisodeDate;
+
+        const time = new Date(nextEpisodeDate);
+        const hours = time.getHours() < 10 ? `0${time.getHours()}` : time.getHours();
+        const minutes = time.getMinutes() < 10 ? `0${time.getMinutes()}` : time.getMinutes();
+        const timeString = `${hours}:${minutes}`
+
+        const imageLink = document.createElement('a');
+        imageLink.style.position = 'relative';
+        imageLink.href = `https://shikimori.one${calendarModel.anime.url}`;
+
+        const divCard = document.createElement('div');
+        divCard.style.display = 'flow';
+        divCard.style.width = '235px';
+        divCard.style.height = 'auto';
+        divCard.style.borderRadius = '7px';
+        divCard.style.marginLeft = '7px';
+        divCard.style.marginRight = '7px';
+        divCard.style.marginTop = '20px';
+        divCard.style.marginBottom = '22px';
+
+        divCard.addEventListener('mouseover', () => {
+            divCard.style.scale = '1.02';
+        });
+
+        divCard.addEventListener('mouseleave', () => {
+            divCard.style.scale = '1';
+        });
+
+        /** Контейнер информации/картинки */
+        const imageDiv = document.createElement('div');
+        imageDiv.style.height = '328px';
+        imageDiv.style.width = '235px';
+        imageDiv.style.position = 'relative';
+
+        imageLink.appendChild(imageDiv);
+
+        /** Контейнер информации под картинкой */
+        const infoDiv = document.createElement('div');
+        infoDiv.style.display = 'flow';
+        infoDiv.style.height = style100percent;
+        infoDiv.style.width = style100percent;
+        infoDiv.style.position = 'absolute';
+        infoDiv.style.left = 0;
+        infoDiv.style.right = 0;
+        infoDiv.style.top = 0;
+        infoDiv.style.bottom = 0;
+        infoDiv.style.margin = 'auto';
+        infoDiv.style.objectPosition = centerStyle;
+        infoDiv.style.justifyContent = centerStyle;
+        infoDiv.style.objectFit = 'cover';
+        infoDiv.style.borderRadius = '7px';
+
+        /** Контейнер c информацией внутри infoDiv */
+        const infoContainer = document.createElement('div');
+        infoContainer.style.display = 'flow';
+        infoContainer.style.height = 'auto';
+        infoContainer.style.width = style100percent;
+        infoContainer.style.justifyContent = centerStyle;
+        infoContainer.style.alignItems = centerStyle;
+        infoContainer.style.marginTop = '30%';
+
+        /** Контейнер статус выхода - оценка */
+        const statusScore = document.createElement('div');
+        statusScore.style.display = flexStyle;
+        statusScore.style.width = style100percent;
+        statusScore.style.height = 'auto';
+        statusScore.style.alignItems = centerStyle;
+        statusScore.style.justifyContent = centerStyle;
+
+        /** Статус */
+        const status = getText();
+        status.innerHTML = getStatusString(calendarModel.anime.status);
+        status.style.color = getStatusColor(calendarModel.anime.status);
+
+        statusScore.appendChild(status);
+
+        /** Оценка */
+        const score = getText();
+        score.innerHTML = calendarModel.anime.score;
+
+        statusScore.appendChild(score);
+
+        infoContainer.appendChild(statusScore);
+
+        infoDiv.appendChild(infoContainer);
+
+        imageDiv.appendChild(infoDiv)
+
+        /** Картинка карточки */
+        const image = document.createElement('img');
+        image.style.height = style100percent;
+        image.style.width = style100percent;
+        image.style.position = 'absolute';
+        image.style.top = 0;
+        image.style.objectFit = 'cover';
+        image.style.borderRadius = '7px';
+        image.src = `https://shikimori.one${calendarModel.anime.image.original}`;
+
+        imageDiv.appendChild(image);
+
+        /** Контейнер Текста поверх картинки */
+        const overPicture = document.createElement('div');
+        overPicture.style.height = '30px';
+        overPicture.style.width = 'auto';
+        overPicture.style.position = 'absolute';
+        overPicture.style.top = 0;
+        overPicture.style.objectFit = 'cover';
+        overPicture.style.borderTopLeftRadius = '7px';
+        overPicture.style.borderBottomRightRadius = '7px';
+        overPicture.style.background = `rgba(0, 0, 0, 0.7)`;
+        overPicture.style.justifyContent = centerStyle;
+        overPicture.style.alignItems = centerStyle;
+
+        const overPictureText = getText();
+        overPictureText.innerHTML = timeString;
+
+        overPicture.appendChild(overPictureText)
+
+        if (!isAfter) {
+            imageDiv.appendChild(overPicture);
+        }
+
+        /** Текст под картинкой */
+        const cardUnderText = document.createElement('div');
+        cardUnderText.style.height = 'auto';
+        cardUnderText.style.width = style100percent;
+        cardUnderText.style.transition = 'background-color 500ms linear';
+
+        cardUnderText.addEventListener("mouseover", (event) => {
+            cardUnderText.style.background = `rgba(255, 255, 255, 0.1)`;
+            image.style.transition = 'all .5s';
+            image.style.opacity = "0";
+        });
+
+        cardUnderText.addEventListener("mouseleave", (event) => {
+            cardUnderText.style.background = 'transparent';
+            image.style.opacity = "1";
+        });
+
+        /** Название */
+        const title = getText(
+            (calendarModel.anime.russian != null && calendarModel.anime.russian !== '') ? calendarModel.anime.russian : calendarModel.anime.name
+        );
+
+        const episodeTimeDiv = document.createElement('div');
+        episodeTimeDiv.style.display = 'flex';
+        episodeTimeDiv.style.width = style100percent;
+        episodeTimeDiv.style.height = '7px';
+        episodeTimeDiv.style.justifyContent = centerStyle;
+        episodeTimeDiv.style.alignItems = centerStyle;
+
+        /** Выходящий эпизод */
+        const episode = getText(`${calendarModel.next_episode} эп.`);
+
+        /** Разделитель */
+        const divider = getTextOnBackground(`·`);
+        divider.style.padding = 0;
+
+        /** Время до следующего эпизода */
+        const timeBeforeCurrent = getTextOnBackground(`${getDateBeforeCurrent(nextEpisodeDate)}`);
+
+        episodeTimeDiv.appendChild(episode);
+
+        if (!isAfter) {
+            episodeTimeDiv.appendChild(divider);
+            episodeTimeDiv.appendChild(timeBeforeCurrent);
+        }
+
+        cardUnderText.appendChild(title);
+        cardUnderText.appendChild(episodeTimeDiv)
+
+        divCard.appendChild(imageLink);
+        divCard.appendChild(cardUnderText);
+
+        return divCard;
+    }
+
+    /** Основной текст */
+    function getText(value, color, size) {
+        const text = document.createElement('small');
+        text.style.display = '-webkit-box';
+        text.style.padding = '7px';
+        text.style.color = color ?? AmoledColorOnPrimary;
+        text.style.textAlign = centerStyle;
+        text.style.fontSize = size;
+        text.style.fontFamily = 'verdana';
+        text.style.textOverflow = 'ellipsis';
+        text.style.webkitBoxOrient = 'vertical';
+        text.style.webkitLineClamp = 1;
+        text.style.overflow = 'hidden';
+        text.innerHTML = value;
+
+        return text;
+    }
+
+    /** Основной текст */
+    function getTextOnBackground(value, color, size) {
+        const text = document.createElement('small');
+        text.style.display = '-webkit-box';
+        text.style.padding = '7px';
+        text.style.color = DefaultColorOnBackground;
+        text.style.textAlign = centerStyle;
+        text.style.fontSize = size;
+        text.style.fontFamily = 'verdana';
+        text.style.textOverflow = 'ellipsis';
+        text.style.webkitBoxOrient = 'vertical';
+        text.style.webkitLineClamp = 1;
+        text.style.overflow = 'hidden';
+        text.innerHTML = value;
+
+        return text;
+    }
+
+    /** Основной полужирный текст */
+    function getSemiBoldText(value, color, size) {
+        const text = document.createElement('small');
+        text.style.display = '-webkit-box';
+        text.style.padding = '7px';
+        text.style.color = color ?? AmoledColorOnPrimary;
+        text.style.textAlign = centerStyle;
+        text.style.fontSize = size;
+        text.style.fontWeight = '600';
+        text.style.fontFamily = 'verdana';
+        text.style.textOverflow = 'ellipsis';
+        text.style.webkitBoxOrient = 'vertical';
+        text.style.webkitLineClamp = 1;
+        text.style.overflow = 'hidden';
+        text.innerHTML = value;
+
+        return text;
+    }
+
+    function getStatusString(status) {
+        switch (status) {
+            case ("anons"):
+                return "Анонс";
+            case ("ongoing"):
+                return "Онгоинг";
+            default:
+                return "";
+        }
+    }
+
+    function getStatusColor(status) {
+        switch (status) {
+            case ("anons"):
+                return AnonsColor;
+            case ("ongoing"):
+                return OngoingColor;
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * Метод возвращает строку вида "22 мин" / "7 ч 15 мин" / "7 дней"
+     * количество времени от текущей до будущей даты
+     *
+     * @param date дата
+     */
+    function getDateBeforeCurrent(date) {
+
+        let dateString = ''
+
+        // текущая дата
+        const currentDate = Date.now()
+
+        // разница в миллисекундах между датами
+        const difference = date - currentDate
+
+        // переводим в секунды поделив на 1000 (в одной секунде 1000 миллисекунд)
+        const allSeconds = Math.floor(difference / 1000)
+
+        // переводим секунды в минуты
+        const minutes = Math.floor(allSeconds / 60)
+
+        // переводим минуты в часы
+        const hours = Math.floor(minutes / 60)
+
+        // переводим часы в дни
+        const days = Math.floor(hours / 24)
+
+        if (days >= 1) {
+            dateString = `${days} ${getDayEndingString(days)}`
+        }
+
+        if (days < 1 && hours >= 1) {
+            dateString = `${hours} ч ${minutes - hours * 60} мин`;
+        }
+
+        if (days < 1 && hours < 1) {
+            dateString = `${minutes} мин`;
+        }
+
+        return dateString
+    }
+
+    /**
+     * Метод возвращает строку для подстановки к количеству дней
+     *
+     * @param days количество дней
+     */
+    function getDayEndingString(days) {
+
+        if (Math.floor(days % 10) === 1 && Math.floor(days % 100) !== 11) {
+            return "день";
+        }
+
+        if ((Math.floor(days % 10) >= 2 && Math.floor(days % 10) <= 4) && (days < 11 || days > 14)) {
+            return "дня";
+        }
+
+        return "дней";
+    }
+
+    /**
+     * Функция для преобразования цвет из HEX в RGBA
+     */
+    function hexToRgbWithAlpha(hex, alpha) {
+
+        const isValidHex = (hexValue) => /^#([A-Fa-f0-9]{3,4}){1,2}$/.test(hexValue)
+
+        if (!isValidHex(hex)) {
+            return "transparent"
+        }
+
+        hex = hex.replace('#', '');
+
+        let r;
+        let g;
+        let b;
+
+        if (hex.length === 8) {
+            r = parseInt(hex.slice(0, 2), 16);
+            g = parseInt(hex.slice(2, 4), 16);
+            b = parseInt(hex.slice(4, 6), 16);
+        } else {
+            r = parseInt(hex.length === 3 ? hex.slice(0, 1).repeat(2) : hex.slice(0, 2), 16);
+            g = parseInt(hex.length === 3 ? hex.slice(1, 2).repeat(2) : hex.slice(2, 4), 16);
+            b = parseInt(hex.length === 3 ? hex.slice(2, 3).repeat(2) : hex.slice(4, 6), 16);
+        }
+
+        if (alpha != null && (alpha >= 0 && alpha <= 1)) {
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+</script>
+
+</html>
