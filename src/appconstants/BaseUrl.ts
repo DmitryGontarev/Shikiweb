@@ -3,8 +3,14 @@
 /** URL-адресы сайта */
 ///////////////////////////////////////////////////////////////////////////
 
+/** Первая часть доменного имени сайта Shikimori */
+export const DOMAIN_FIRST: string = "shiki"
+
+/** Вторая часть доменного имени сайта Shikimori */
+export const DOMAIN_SECOND: string = "one"
+
 /** Базовый URL-адрес сайта Shikimori */
-export const SHIKIMORI_BASE_URL: string = "https://shikimori.one/"
+export const SHIKIMORI_BASE_URL: string = `https://${DOMAIN_FIRST}.${DOMAIN_SECOND}/`
 
 /** Базовый URL-адрес сайта Shikimori для загрузки картинок */
 export const SHIKIMORI_IMAGE_URL: string = "https://kawai.shikimori.one/"
